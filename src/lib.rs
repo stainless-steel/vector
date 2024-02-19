@@ -5,11 +5,13 @@
 
 use std::collections::{HashMap, HashSet};
 
+/// An index.
 pub struct Index<const N: usize> {
     vectors: Vec<Vector<N>>,
     roots: Vec<Node<N>>,
 }
 
+/// A vector.
 #[derive(Clone, Copy)]
 pub struct Vector<const N: usize>(pub [f32; N]);
 
@@ -35,6 +37,7 @@ struct Branch<const N: usize> {
 struct Leaf<const N: usize>(Vec<usize>);
 
 impl<const N: usize> Index<N> {
+    /// Build an index.
     pub fn build(vectors: Vec<Vector<N>>, forest_size: usize, leaf_size: usize, seed: u64) -> Self {
         let mut source = random::default(seed);
         let vectors = deduplicate(vectors);
@@ -45,6 +48,7 @@ impl<const N: usize> Index<N> {
         Self { vectors, roots }
     }
 
+    /// Search neighbor vectors.
     pub fn search(
         &self,
         vector: &Vector<N>,
