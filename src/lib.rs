@@ -18,11 +18,6 @@ pub struct Vector<const N: usize>(pub [f32; N]);
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 struct Key<const N: usize>([u32; N]);
 
-struct Plane<const N: usize> {
-    normal: Vector<N>,
-    offset: f32,
-}
-
 enum Node<const N: usize> {
     Branch(Box<Branch<N>>),
     Leaf(Box<Leaf<N>>),
@@ -35,6 +30,11 @@ struct Branch<const N: usize> {
 }
 
 struct Leaf<const N: usize>(Vec<usize>);
+
+struct Plane<const N: usize> {
+    normal: Vector<N>,
+    offset: f32,
+}
 
 impl<const N: usize> Index<N> {
     /// Build an index.
@@ -68,27 +68,6 @@ impl<const N: usize> Index<N> {
             .into_iter()
             .take(count)
             .map(|(index, distance)| (&self.vectors[index], distance))
-    }
-}
-
-impl<const N: usize> Node<N> {
-    fn build<T: random::Source>(
-        vectors: &[Vector<N>],
-        indices: &[usize],
-        leaf_size: usize,
-        source: &mut T,
-    ) -> Self {
-        if indices.len() <= leaf_size {
-            return Self::Leaf(Box::new(Leaf::<N>(indices.to_vec())));
-        }
-        let (plane, above, below) = Plane::build(vectors, indices, source);
-        let above = Self::build(vectors, &above, leaf_size, source);
-        let below = Self::build(vectors, &below, leaf_size, source);
-        Self::Branch(Box::new(Branch::<N> {
-            plane,
-            above,
-            below,
-        }))
     }
 }
 
@@ -142,6 +121,27 @@ impl<const N: usize> Vector<N> {
                 .try_into()
                 .unwrap(),
         )
+    }
+}
+
+impl<const N: usize> Node<N> {
+    fn build<T: random::Source>(
+        vectors: &[Vector<N>],
+        indices: &[usize],
+        leaf_size: usize,
+        source: &mut T,
+    ) -> Self {
+        if indices.len() <= leaf_size {
+            return Self::Leaf(Box::new(Leaf::<N>(indices.to_vec())));
+        }
+        let (plane, above, below) = Plane::build(vectors, indices, source);
+        let above = Self::build(vectors, &above, leaf_size, source);
+        let below = Self::build(vectors, &below, leaf_size, source);
+        Self::Branch(Box::new(Branch::<N> {
+            plane,
+            above,
+            below,
+        }))
     }
 }
 
