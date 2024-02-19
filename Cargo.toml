@@ -5,6 +5,8 @@ edition = "2021"
 license = "Apache-2.0/MIT"
 authors = [
     "Ivan Ukhov <ivan.ukhov@gmail.com>",
+    "Navya Mehta <navya.mehta@gmail.com>",
+    "Nikhil Garg <nikhilgarg28@gmail.com>",
 ]
 description = "The package provides a vector database."
 documentation = "https://docs.rs/vector"
