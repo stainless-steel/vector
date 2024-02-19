@@ -1,0 +1,31 @@
+name: build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ructions/toolchain@v2
+        with: {toolchain: stable, components: "clippy, rustfmt"}
+      - run: cargo clippy -- -D warnings
+      - run: cargo fmt --all -- --check
+
+  test:
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ructions/toolchain@v2
+        with: {toolchain: stable}
+      - run: cargo test
