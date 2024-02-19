@@ -39,6 +39,7 @@ struct Leaf<const N: usize>(Vec<usize>);
 impl<const N: usize> Index<N> {
     /// Build an index.
     pub fn build(vectors: Vec<Vector<N>>, forest_size: usize, leaf_size: usize, seed: u64) -> Self {
+        debug_assert!(leaf_size >= 1);
         let mut source = random::default(seed);
         let vectors = deduplicate(vectors);
         let indices = (0..vectors.len()).collect::<Vec<_>>();
