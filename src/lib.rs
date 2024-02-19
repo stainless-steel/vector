@@ -152,10 +152,10 @@ impl<const N: usize> Plane<N> {
         source: &mut T,
     ) -> (Self, Vec<usize>, Vec<usize>) {
         debug_assert!(vectors.len() > 1);
-        let i = source.read::<usize>();
+        let i = (indices.len() as f64 * source.read::<f64>()) as usize;
         let mut j = i;
         while i == j {
-            j = source.read::<usize>();
+            j = (indices.len() as f64 * source.read::<f64>()) as usize;
         }
         let normal = vectors[j].subtract(&vectors[i]);
         let offset = -normal.product(&vectors[i].average(&vectors[j]));
@@ -207,5 +207,19 @@ fn search<const N: usize>(
             }
             found
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Plane, Vector};
+
+    #[test]
+    fn plane_is_above() {
+        let mut source = random::default(42);
+        let vectors = vec![Vector([4.0, 2.0]), Vector([5.0, 7.0])];
+        let indices = (0..vectors.len()).collect::<Vec<_>>();
+        let (plane, _, _) = Plane::build(&vectors, &indices, &mut source);
+        assert::close(&plane.normal.0, &[1.0, 5.0], 1e-6);
     }
 }
