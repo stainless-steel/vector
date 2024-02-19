@@ -159,14 +159,10 @@ impl<const N: usize> Plane<N> {
         let normal = vectors[j].subtract(&vectors[i]);
         let offset = -normal.product(&vectors[i].average(&vectors[j]));
         let plane = Plane::<N> { normal, offset };
-        let (mut above, mut below) = (vec![], vec![]);
-        for index in indices.iter().cloned() {
-            if plane.is_above(&vectors[index]) {
-                above.push(index)
-            } else {
-                below.push(index)
-            };
-        }
+        let (above, below) = indices
+            .iter()
+            .cloned()
+            .partition(|index| plane.is_above(&vectors[*index]));
         (plane, above, below)
     }
 
