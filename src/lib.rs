@@ -219,7 +219,9 @@ mod tests {
         let mut source = random::default(42);
         let vectors = vec![Vector([4.0, 2.0]), Vector([5.0, 7.0])];
         let indices = (0..vectors.len()).collect::<Vec<_>>();
-        let (plane, _, _) = Plane::build(&vectors, &indices, &mut source);
+        let (plane, above, below) = Plane::build(&vectors, &indices, &mut source);
         assert::close(&plane.normal.0, &[1.0, 5.0], 1e-6);
+        assert_eq!(above, &[1]);
+        assert_eq!(below, &[0]);
     }
 }
