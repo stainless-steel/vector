@@ -13,3 +13,6 @@ repository = "https://github.com/stainless-steel/vector"
 readme = "README.md"
 categories = ["database"]
 keywords = ["database"]
+
+[dependencies]
+random = "0.14.0"
