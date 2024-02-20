@@ -11,15 +11,11 @@ pub struct Index<const N: usize> {
 }
 
 /// A vector.
-#[derive(Clone, Copy)]
-pub struct Vector<const N: usize>(pub [f32; N]);
-
-#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
-struct Key<const N: usize>([u32; N]);
+pub type Vector<const N: usize> = [f32; N];
 
 enum Node<const N: usize> {
     Branch(Box<Branch<N>>),
-    Leaf(Box<Leaf<N>>),
+    Leaf(Box<Leaf>),
 }
 
 struct Branch<const N: usize> {
@@ -28,7 +24,7 @@ struct Branch<const N: usize> {
     below: Node<N>,
 }
 
-struct Leaf<const N: usize>(Vec<usize>);
+type Leaf = Vec<usize>;
 
 struct Plane<const N: usize> {
     normal: Vector<N>,
@@ -61,64 +57,11 @@ impl<const N: usize> Index<N> {
         }
         let mut pairs = indices
             .into_iter()
-            .map(|index| (index, vectors[index].distance(query)))
+            .map(|index| (index, distance(&vectors[index], query)))
             .collect::<Vec<_>>();
         pairs.sort_by(|one, other| one.1.partial_cmp(&other.1).unwrap());
         pairs.truncate(count);
         pairs
-    }
-}
-
-impl<const N: usize> Vector<N> {
-    fn average(&self, other: &Self) -> Self {
-        Self(
-            self.0
-                .iter()
-                .zip(other.0)
-                .map(|(one, other)| (one + other) / 2.0)
-                .collect::<Vec<_>>()
-                .try_into()
-                .unwrap(),
-        )
-    }
-
-    fn distance(&self, other: &Self) -> f32 {
-        self.0
-            .iter()
-            .zip(other.0)
-            .map(|(one, other)| (one - other).powi(2))
-            .sum()
-    }
-
-    fn product(&self, other: &Self) -> f32 {
-        self.0
-            .iter()
-            .zip(other.0)
-            .map(|(one, other)| one * other)
-            .sum::<f32>()
-    }
-
-    fn subtract(&self, other: &Self) -> Self {
-        Self(
-            self.0
-                .iter()
-                .zip(other.0)
-                .map(|(one, other)| one - other)
-                .collect::<Vec<_>>()
-                .try_into()
-                .unwrap(),
-        )
-    }
-
-    fn as_key(&self) -> Key<N> {
-        Key::<N>(
-            self.0
-                .iter()
-                .map(|value| value.to_bits())
-                .collect::<Vec<_>>()
-                .try_into()
-                .unwrap(),
-        )
     }
 }
 
@@ -130,7 +73,7 @@ impl<const N: usize> Node<N> {
         source: &mut T,
     ) -> Self {
         if indices.len() <= leaf_size {
-            return Self::Leaf(Box::new(Leaf::<N>(indices.to_vec())));
+            return Self::Leaf(Box::new(indices.to_vec()));
         }
         let (plane, above, below) = Plane::build(vectors, indices, source);
         let above = Self::build(vectors, &above, leaf_size, source);
@@ -157,8 +100,8 @@ impl<const N: usize> Plane<N> {
         }
         let one = &vectors[indices[i]];
         let other = &vectors[indices[j]];
-        let normal = other.subtract(one);
-        let offset = -normal.product(&one.average(other));
+        let normal = subtract(other, one);
+        let offset = -product(&normal, &average(one, other));
         let plane = Plane::<N> { normal, offset };
         let (above, below) = indices
             .iter()
@@ -167,21 +110,55 @@ impl<const N: usize> Plane<N> {
     }
 
     fn is_above(&self, vector: &Vector<N>) -> bool {
-        self.normal.product(vector) + self.offset > 0.0
+        product(&self.normal, vector) + self.offset > 0.0
     }
+}
+
+fn average<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> Vector<N> {
+    one.iter()
+        .zip(other)
+        .map(|(one, other)| (one + other) / 2.0)
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap()
 }
 
 fn deduplicate<const N: usize>(vectors: &[Vector<N>]) -> Vec<usize> {
     let mut indices = Vec::with_capacity(vectors.len());
     let mut seen = BTreeSet::default();
     for (index, vector) in vectors.iter().enumerate() {
-        let key = vector.as_key();
+        let key: [u32; N] = vector
+            .iter()
+            .map(|value| value.to_bits())
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
         if !seen.contains(&key) {
             seen.insert(key);
             indices.push(index);
         }
     }
     indices
+}
+
+fn distance<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> f32 {
+    one.iter()
+        .zip(other)
+        .map(|(one, other)| (one - other).powi(2))
+        .sum()
+}
+
+fn product<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> f32 {
+    one.iter().zip(other).map(|(one, other)| one * other).sum()
+}
+
+fn subtract<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> Vector<N> {
+    one.iter()
+        .zip(other)
+        .map(|(one, other)| one - other)
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap()
 }
 
 fn search<const N: usize>(
@@ -204,9 +181,9 @@ fn search<const N: usize>(
             found
         }
         Node::Leaf(node) => {
-            let found = std::cmp::min(count, node.0.len());
+            let found = std::cmp::min(count, node.len());
             for i in 0..found {
-                indices.insert(node.0[i]);
+                indices.insert(node[i]);
             }
             found
         }
@@ -215,17 +192,17 @@ fn search<const N: usize>(
 
 #[cfg(test)]
 mod tests {
-    use super::{Index, Plane, Vector};
+    use super::{Index, Plane};
 
     #[test]
     fn index() {
         let vectors = vec![
-            Vector([1.0, 3.0]),
-            Vector([2.0, 9.0]),
-            Vector([4.0, 2.0]),
-            Vector([4.0, 10.0]),
-            Vector([5.0, 7.0]),
-            Vector([7.0, 8.0]),
+            [1.0, 3.0],
+            [2.0, 9.0],
+            [4.0, 2.0],
+            [4.0, 10.0],
+            [5.0, 7.0],
+            [7.0, 8.0],
         ];
         let _ = Index::build(&vectors, 1, 1, 42);
     }
@@ -233,15 +210,10 @@ mod tests {
     #[test]
     fn plane() {
         let mut source = random::default(25);
-        let vectors = vec![
-            Vector([4.0, 2.0]),
-            Vector([5.0, 7.0]),
-            Vector([2.0, 9.0]),
-            Vector([7.0, 8.0]),
-        ];
+        let vectors = vec![[4.0, 2.0], [5.0, 7.0], [2.0, 9.0], [7.0, 8.0]];
         let indices = (0..vectors.len()).collect::<Vec<_>>();
         let (plane, above, below) = Plane::build(&vectors, &indices, &mut source);
-        assert::close(&plane.normal.0, &[1.0, 5.0], 1e-6);
+        assert::close(&plane.normal, &[1.0, 5.0], 1e-6);
         assert::close(plane.offset, -27.0, 1e-6);
         assert_eq!(above, &[1, 2, 3]);
         assert_eq!(below, &[0]);
