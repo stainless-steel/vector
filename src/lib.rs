@@ -64,7 +64,7 @@ impl<const N: usize> Index<N> {
         debug_assert!(forest_size >= 1);
         debug_assert!(leaf_size >= 1);
         let mut source = random::default(seed);
-        let indices = deduplicate(vectors);
+        let indices = unique(vectors);
         let roots = (0..forest_size)
             .map(|_| Node::build(vectors, &indices, leaf_size, &mut source))
             .collect();
@@ -152,24 +152,6 @@ fn average<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> Vector<N> {
         .unwrap()
 }
 
-fn deduplicate<const N: usize>(vectors: &[Vector<N>]) -> Vec<usize> {
-    let mut indices = Vec::with_capacity(vectors.len());
-    let mut seen = BTreeSet::default();
-    for (index, vector) in vectors.iter().enumerate() {
-        let key: [u32; N] = vector
-            .iter()
-            .map(|value| value.to_bits())
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
-        if !seen.contains(&key) {
-            seen.insert(key);
-            indices.push(index);
-        }
-    }
-    indices
-}
-
 fn distance<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> f32 {
     one.iter()
         .zip(other)
@@ -179,15 +161,6 @@ fn distance<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> f32 {
 
 fn product<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> f32 {
     one.iter().zip(other).map(|(one, other)| one * other).sum()
-}
-
-fn subtract<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> Vector<N> {
-    one.iter()
-        .zip(other)
-        .map(|(one, other)| one - other)
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap()
 }
 
 fn search<const N: usize>(
@@ -217,6 +190,33 @@ fn search<const N: usize>(
             found
         }
     }
+}
+
+fn subtract<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> Vector<N> {
+    one.iter()
+        .zip(other)
+        .map(|(one, other)| one - other)
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap()
+}
+
+fn unique<const N: usize>(vectors: &[Vector<N>]) -> Vec<usize> {
+    let mut indices = Vec::with_capacity(vectors.len());
+    let mut seen = BTreeSet::default();
+    for (index, vector) in vectors.iter().enumerate() {
+        let key: [u32; N] = vector
+            .iter()
+            .map(|value| value.to_bits())
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+        if !seen.contains(&key) {
+            seen.insert(key);
+            indices.push(index);
+        }
+    }
+    indices
 }
 
 #[cfg(test)]
