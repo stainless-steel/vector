@@ -158,8 +158,10 @@ impl<const N: usize> Plane<N> {
         while i == j {
             j = source.read::<usize>() % indices.len();
         }
-        let normal = vectors[j].subtract(&vectors[i]);
-        let offset = -normal.product(&vectors[i].average(&vectors[j]));
+        let one = &vectors[indices[i]];
+        let other = &vectors[indices[j]];
+        let normal = other.subtract(one);
+        let offset = -normal.product(&one.average(other));
         let plane = Plane::<N> { normal, offset };
         let (above, below) = indices
             .iter()
