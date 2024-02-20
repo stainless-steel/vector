@@ -1,7 +1,30 @@
-//! Vector database.
-
-// The implementation is based on:
-// https://fennel.ai/blog/vector-search-in-200-lines-of-rust/
+//! Vector database allowing for efficient search of nearest neighbors.
+//!
+//! The approach is described in “[FANN: Vector Search in 200 Lines of Rust][1]” by Nikhil Garg and
+//! Navya Mehta.
+//!
+//! # Example
+//!
+//! ```
+//! use vector::Index;
+//!
+//! let vectors = vec![
+//!     [4.0, 2.0],
+//!     [5.0, 7.0],
+//!     [2.0, 9.0],
+//!     [7.0, 8.0],
+//! ];
+//! let index = Index::build(&vectors, 1, 1, 42);
+//!
+//! let query = [5.0, 5.0];
+//! let (indices, distances): (Vec<_>, Vec<_>) = index
+//!     .search(&vectors, &query, 2)
+//!     .into_iter()
+//!     .unzip();
+//! assert_eq!(indices, &[1, 0]);
+//! ```
+//!
+//! [1]: https://fennel.ai/blog/vector-search-in-200-lines-of-rust/
 
 use std::collections::BTreeSet;
 
@@ -33,6 +56,10 @@ struct Plane<const N: usize> {
 
 impl<const N: usize> Index<N> {
     /// Build an index.
+    ///
+    /// The forest size is the number of trees built internally, and the leaf size is the maximum
+    /// number of vectors a leaf can have without being split. Both arguments should be greater or
+    /// equal to one.
     pub fn build(vectors: &[Vector<N>], forest_size: usize, leaf_size: usize, seed: u64) -> Self {
         debug_assert!(forest_size >= 1);
         debug_assert!(leaf_size >= 1);
@@ -44,7 +71,9 @@ impl<const N: usize> Index<N> {
         Self { roots }
     }
 
-    /// Search neighbor vectors.
+    /// Find `count` vectors close to `query`.
+    ///
+    /// The vectors should be the same as the ones passed to `build`.
     pub fn search(
         &self,
         vectors: &[Vector<N>],

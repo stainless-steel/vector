@@ -1,6 +1,28 @@
 # Vector [![Package][package-img]][package-url] [![Documentation][documentation-img]][documentation-url] [![Build][build-img]][build-url]
 
-The package provides a vector database.
+The package provides a vector database allowing for efficient search of nearest
+neighbors.
+
+## Example
+
+```rust
+use vector::Index;
+
+let vectors = vec![
+    [4.0, 2.0],
+    [5.0, 7.0],
+    [2.0, 9.0],
+    [7.0, 8.0],
+];
+let index = Index::build(&vectors, 1, 1, 42);
+
+let query = [5.0, 5.0];
+let (indices, distances): (Vec<_>, Vec<_>) = index
+    .search(&vectors, &query, 2)
+    .into_iter()
+    .unzip();
+assert_eq!(indices, &[1, 0]);
+```
 
 ## Contribution
 

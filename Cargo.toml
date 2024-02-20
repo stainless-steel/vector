@@ -1,6 +1,6 @@
 [package]
 name = "vector"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "Apache-2.0/MIT"
 authors = [
@@ -8,7 +8,7 @@ authors = [
     "Navya Mehta <navya.mehta@gmail.com>",
     "Nikhil Garg <nikhilgarg28@gmail.com>",
 ]
-description = "The package provides a vector database."
+description = "The package provides a vector database allowing for efficient search of nearest neighbors."
 documentation = "https://docs.rs/vector"
 homepage = "https://github.com/stainless-steel/vector"
 repository = "https://github.com/stainless-steel/vector"
