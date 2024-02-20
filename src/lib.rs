@@ -197,20 +197,42 @@ mod tests {
     #[test]
     fn index() {
         let vectors = vec![
+            [4.0, 2.0], // A1
+            [5.0, 7.0], // B1
+            [2.0, 9.0], // A2
+            [7.0, 8.0], // B2
             [1.0, 3.0],
-            [2.0, 9.0],
-            [4.0, 2.0],
             [4.0, 10.0],
-            [5.0, 7.0],
-            [7.0, 8.0],
         ];
-        let _ = Index::build(&vectors, 1, 1, 42);
+        let cases = vec![
+            ([5.0, 0.0], 1, vec![0]),
+            ([0.0, 0.0], 10, vec![4, 0, 1, 2, 3, 5]),
+            ([5.0, 10.0], 1, vec![5]),
+            ([7.0, 8.0], 2, vec![3, 1]),
+        ];
+
+        let index = Index::build(&vectors, 1, 1, 42);
+        for (query, count, indices) in cases {
+            assert_eq!(
+                index
+                    .search(&vectors, &query, count)
+                    .into_iter()
+                    .map(|(index, _)| index)
+                    .collect::<Vec<_>>(),
+                indices,
+            );
+        }
     }
 
     #[test]
     fn plane() {
         let mut source = random::default(25);
-        let vectors = vec![[4.0, 2.0], [5.0, 7.0], [2.0, 9.0], [7.0, 8.0]];
+        let vectors = vec![
+            [4.0, 2.0], // A1
+            [5.0, 7.0], // B1
+            [2.0, 9.0], // A2
+            [7.0, 8.0], // B2
+        ];
         let indices = (0..vectors.len()).collect::<Vec<_>>();
         let (plane, above, below) = Plane::build(&vectors, &indices, &mut source);
         assert::close(&plane.normal, &[1.0, 5.0], 1e-6);
