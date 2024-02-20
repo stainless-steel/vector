@@ -3,11 +3,10 @@
 // The implementation is based on:
 // https://fennel.ai/blog/vector-search-in-200-lines-of-rust/
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 /// An index.
 pub struct Index<const N: usize> {
-    vectors: Vec<Vector<N>>,
     roots: Vec<Node<N>>,
 }
 
@@ -38,36 +37,35 @@ struct Plane<const N: usize> {
 
 impl<const N: usize> Index<N> {
     /// Build an index.
-    pub fn build(vectors: Vec<Vector<N>>, forest_size: usize, leaf_size: usize, seed: u64) -> Self {
+    pub fn build(vectors: &[Vector<N>], forest_size: usize, leaf_size: usize, seed: u64) -> Self {
         debug_assert!(forest_size >= 1);
         debug_assert!(leaf_size >= 1);
         let mut source = random::default(seed);
-        let indices = deduplicate(&vectors);
+        let indices = deduplicate(vectors);
         let roots = (0..forest_size)
-            .map(|_| Node::build(&vectors, &indices, leaf_size, &mut source))
+            .map(|_| Node::build(vectors, &indices, leaf_size, &mut source))
             .collect();
-        Self { vectors, roots }
+        Self { roots }
     }
 
     /// Search neighbor vectors.
     pub fn search(
         &self,
-        vector: &Vector<N>,
+        vectors: &[Vector<N>],
+        query: &Vector<N>,
         count: usize,
-    ) -> impl Iterator<Item = (&Vector<N>, f32)> {
+    ) -> Vec<(usize, f32)> {
         let mut indices = BTreeSet::new();
         for root in self.roots.iter() {
-            search(root, vector, count, &mut indices);
+            search(root, query, count, &mut indices);
         }
         let mut pairs = indices
             .into_iter()
-            .map(|index| (index, self.vectors[index].distance(vector)))
+            .map(|index| (index, vectors[index].distance(query)))
             .collect::<Vec<_>>();
         pairs.sort_by(|one, other| one.1.partial_cmp(&other.1).unwrap());
+        pairs.truncate(count);
         pairs
-            .into_iter()
-            .take(count)
-            .map(|(index, distance)| (&self.vectors[index], distance))
     }
 }
 
@@ -229,7 +227,7 @@ mod tests {
             Vector([5.0, 7.0]),
             Vector([7.0, 8.0]),
         ];
-        let _ = Index::build(vectors, 1, 1, 42);
+        let _ = Index::build(&vectors, 1, 1, 42);
     }
 
     #[test]
