@@ -1,6 +1,6 @@
 [package]
 name = "vector"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "Apache-2.0/MIT"
 authors = [
@@ -13,8 +13,8 @@ documentation = "https://docs.rs/vector"
 homepage = "https://github.com/stainless-steel/vector"
 repository = "https://github.com/stainless-steel/vector"
 readme = "README.md"
-categories = ["database"]
-keywords = ["database"]
+categories = ["data-structures", "database-implementations", "mathematics"]
+keywords = ["database", "machine-learning", "vector-search"]
 
 [dependencies]
 random = "0.14"
