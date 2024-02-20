@@ -42,8 +42,7 @@ impl<const N: usize> Index<N> {
         debug_assert!(forest_size >= 1);
         debug_assert!(leaf_size >= 1);
         let mut source = random::default(seed);
-        let vectors = deduplicate(vectors);
-        let indices = (0..vectors.len()).collect::<Vec<_>>();
+        let indices = deduplicate(&vectors);
         let roots = (0..forest_size)
             .map(|_| Node::build(&vectors, &indices, leaf_size, &mut source))
             .collect();
@@ -165,8 +164,7 @@ impl<const N: usize> Plane<N> {
         let plane = Plane::<N> { normal, offset };
         let (above, below) = indices
             .iter()
-            .cloned()
-            .partition(|index| plane.is_above(&vectors[*index]));
+            .partition(|index| plane.is_above(&vectors[**index]));
         (plane, above, below)
     }
 
@@ -175,13 +173,17 @@ impl<const N: usize> Plane<N> {
     }
 }
 
-fn deduplicate<const N: usize>(vectors: Vec<Vector<N>>) -> Vec<Vector<N>> {
-    vectors
-        .into_iter()
-        .map(|value| (value.as_key(), value))
-        .collect::<BTreeMap<_, _>>()
-        .into_values()
-        .collect()
+fn deduplicate<const N: usize>(vectors: &[Vector<N>]) -> Vec<usize> {
+    let mut indices = Vec::with_capacity(vectors.len());
+    let mut seen = BTreeSet::default();
+    for (index, vector) in vectors.iter().enumerate() {
+        let key = vector.as_key();
+        if !seen.contains(&key) {
+            seen.insert(key);
+            indices.push(index);
+        }
+    }
+    indices
 }
 
 fn search<const N: usize>(
@@ -218,7 +220,7 @@ mod tests {
     use super::{Index, Plane, Vector};
 
     #[test]
-    fn index_search() {
+    fn index() {
         let vectors = vec![
             Vector([1.0, 3.0]),
             Vector([2.0, 9.0]),
@@ -231,7 +233,7 @@ mod tests {
     }
 
     #[test]
-    fn plane_is_above() {
+    fn plane() {
         let mut source = random::default(25);
         let vectors = vec![
             Vector([4.0, 2.0]),

@@ -17,7 +17,7 @@ categories = ["database"]
 keywords = ["database"]
 
 [dependencies]
-random = "0.14.0"
+random = "0.14"
 
 [dev-dependencies]
-assert = "0.7.4"
+assert = "0.7"
