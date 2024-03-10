@@ -168,7 +168,7 @@ fn search<const N: usize>(
     vector: &Vector<N>,
     count: usize,
     indices: &mut BTreeSet<usize>,
-) -> usize {
+) {
     match root {
         Node::Branch(node) => {
             let (primary, secondary) = if node.plane.is_above(vector) {
@@ -176,18 +176,19 @@ fn search<const N: usize>(
             } else {
                 (&node.below, &node.above)
             };
-            let mut found = search(primary, vector, count, indices);
-            if found < count {
-                found += search(secondary, vector, count - found, indices);
+            search(primary, vector, count, indices);
+            if indices.len() < count {
+                search(secondary, vector, count, indices);
             }
-            found
         }
         Node::Leaf(node) => {
-            let found = std::cmp::min(count, node.len());
-            for i in 0..found {
-                indices.insert(node[i]);
+            for index in node.iter() {
+                if indices.len() < count {
+                    indices.insert(*index);
+                } else {
+                    break;
+                }
             }
-            found
         }
     }
 }
