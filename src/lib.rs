@@ -31,6 +31,7 @@ use std::collections::{BTreeMap, BTreeSet};
 /// An index.
 pub struct Index<const N: usize> {
     roots: Vec<Node<N>>,
+    duplicates: BTreeMap<usize, Vec<usize>>,
 }
 
 /// A vector.
@@ -64,11 +65,12 @@ impl<const N: usize> Index<N> {
         debug_assert!(forest_size >= 1);
         debug_assert!(leaf_size >= 1);
         let mut source = random::default(seed);
-        let indices = unique(vectors).into_keys().collect::<Vec<_>>();
+        let duplicates = unique(vectors);
+        let indices = duplicates.keys().cloned().collect::<Vec<_>>();
         let roots = (0..forest_size)
             .map(|_| Node::build(vectors, &indices, leaf_size, &mut source))
             .collect();
-        Self { roots }
+        Self { roots, duplicates }
     }
 
     /// Find `count` vectors close to `query`.
@@ -82,7 +84,7 @@ impl<const N: usize> Index<N> {
     ) -> Vec<(usize, f32)> {
         let mut indices = BTreeSet::new();
         for root in self.roots.iter() {
-            search(root, query, count, &mut indices);
+            search(root, &self.duplicates, query, count, &mut indices);
         }
         let mut pairs = indices
             .into_iter()
@@ -165,6 +167,7 @@ fn product<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> f32 {
 
 fn search<const N: usize>(
     root: &Node<N>,
+    duplicates: &BTreeMap<usize, Vec<usize>>,
     vector: &Vector<N>,
     count: usize,
     indices: &mut BTreeSet<usize>,
@@ -176,15 +179,18 @@ fn search<const N: usize>(
             } else {
                 (&node.below, &node.above)
             };
-            search(primary, vector, count, indices);
+            search(primary, duplicates, vector, count, indices);
             if indices.len() < count {
-                search(secondary, vector, count, indices);
+                search(secondary, duplicates, vector, count, indices);
             }
         }
         Node::Leaf(node) => {
             for index in node.iter() {
                 if indices.len() < count {
                     indices.insert(*index);
+                    for other in duplicates.get(index).unwrap() {
+                        indices.insert(*other);
+                    }
                 } else {
                     break;
                 }
@@ -203,7 +209,7 @@ fn subtract<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> Vector<N> {
 }
 
 fn unique<const N: usize>(vectors: &[Vector<N>]) -> BTreeMap<usize, Vec<usize>> {
-    let mut mapping = BTreeMap::<usize, Vec<usize>>::default();
+    let mut duplicates = BTreeMap::<usize, Vec<usize>>::default();
     let mut seen = BTreeMap::default();
     for (index, vector) in vectors.iter().enumerate() {
         let key: [u32; N] = vector
@@ -213,13 +219,13 @@ fn unique<const N: usize>(vectors: &[Vector<N>]) -> BTreeMap<usize, Vec<usize>> 
             .try_into()
             .unwrap();
         if let Some(first) = seen.get(&key) {
-            mapping.get_mut(first).unwrap().push(index);
+            duplicates.get_mut(first).unwrap().push(index);
         } else {
-            mapping.insert(index, Default::default());
+            duplicates.insert(index, Default::default());
             seen.insert(key, index);
         }
     }
-    mapping
+    duplicates
 }
 
 #[cfg(test)]
