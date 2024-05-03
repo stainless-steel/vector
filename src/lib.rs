@@ -26,7 +26,7 @@
 //!
 //! [1]: https://fennel.ai/blog/vector-search-in-200-lines-of-rust/
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// An index.
 pub struct Index<const N: usize> {
@@ -64,7 +64,7 @@ impl<const N: usize> Index<N> {
         debug_assert!(forest_size >= 1);
         debug_assert!(leaf_size >= 1);
         let mut source = random::default(seed);
-        let indices = unique(vectors);
+        let indices = unique(vectors).into_keys().collect::<Vec<_>>();
         let roots = (0..forest_size)
             .map(|_| Node::build(vectors, &indices, leaf_size, &mut source))
             .collect();
@@ -202,9 +202,9 @@ fn subtract<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> Vector<N> {
         .unwrap()
 }
 
-fn unique<const N: usize>(vectors: &[Vector<N>]) -> Vec<usize> {
-    let mut indices = Vec::with_capacity(vectors.len());
-    let mut seen = BTreeSet::default();
+fn unique<const N: usize>(vectors: &[Vector<N>]) -> BTreeMap<usize, Vec<usize>> {
+    let mut mapping = BTreeMap::<usize, Vec<usize>>::default();
+    let mut seen = BTreeMap::default();
     for (index, vector) in vectors.iter().enumerate() {
         let key: [u32; N] = vector
             .iter()
@@ -212,12 +212,14 @@ fn unique<const N: usize>(vectors: &[Vector<N>]) -> Vec<usize> {
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
-        if !seen.contains(&key) {
-            seen.insert(key);
-            indices.push(index);
+        if let Some(first) = seen.get(&key) {
+            mapping.get_mut(first).unwrap().push(index);
+        } else {
+            mapping.insert(index, Default::default());
+            seen.insert(key, index);
         }
     }
-    indices
+    mapping
 }
 
 #[cfg(test)]
