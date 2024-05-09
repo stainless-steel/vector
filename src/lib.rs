@@ -26,6 +26,7 @@
 //!
 //! [1]: https://fennel.ai/blog/vector-search-in-200-lines-of-rust/
 
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
 /// An index.
@@ -90,7 +91,7 @@ impl<const N: usize> Index<N> {
             .into_iter()
             .map(|index| (index, distance(&vectors[index], query)))
             .collect::<Vec<_>>();
-        pairs.sort_by(|one, other| one.1.partial_cmp(&other.1).unwrap());
+        pairs.sort_by(|one, other| compare(one.1, other.1));
         pairs.truncate(count);
         pairs
     }
@@ -152,6 +153,20 @@ fn average<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> Vector<N> {
         .collect::<Vec<_>>()
         .try_into()
         .unwrap()
+}
+
+fn compare(one: f32, other: f32) -> Ordering {
+    if let Some(value) = one.partial_cmp(&other) {
+        return value;
+    }
+    match (
+        one.is_infinite() || one.is_nan(),
+        other.is_infinite() || other.is_nan(),
+    ) {
+        (true, false) => Ordering::Less,
+        (false, true) => Ordering::Greater,
+        _ => Ordering::Equal,
+    }
 }
 
 fn distance<const N: usize>(one: &Vector<N>, other: &Vector<N>) -> f32 {
